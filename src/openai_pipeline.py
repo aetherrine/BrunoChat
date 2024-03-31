@@ -6,13 +6,16 @@ import weaviate
 from openai import OpenAI
 
 
-def context_retrieval(client, collection_name, embedding):
-    response = client.query.aggregate(collection_name).with_near_vector({
-        'vector': embedding,
-        'certainty': 0.7
-    }).with_limit(5).with_meta().do()
+def context_retrieval(client, collection_name, question_embedding):
+    response = (
+        client.query.get(collection_name, ["text_content", "url"])
+                .with_near_vector({"vector": question_embedding, "certainty": 0.5})
+                .with_limit(1)
+                .with_additional(["distance"])
+                .do()
+    )
     
-    retrieved_texts = [result['path']['text_content'] for result in response['data']['Aggregate'][collection_name]]
+    retrieved_texts = [result['text_content'] for result in response['data']['Get'][collection_name]]
     return retrieved_texts
 
 def rag(history, question, openai_client, weaviate_client, collection_name):
@@ -22,8 +25,8 @@ def rag(history, question, openai_client, weaviate_client, collection_name):
         model = 'text-embedding-3-small'
     ).data[0].embedding
 
-    # retrieved_texts = context_retrieval(weaviate_client, collection_name, question_embedding)
-    retrieved_texts = ""
+    retrieved_texts = context_retrieval(weaviate_client, collection_name, question_embedding)
+    # retrieved_texts = ""
     combined_context = " ".join(retrieved_texts)
     content = f"Given the following information {combined_context}\n\nAnswer the question: {question}"
     
@@ -45,11 +48,7 @@ if __name__ == "__main__":
     weaviate_endpoint = os.getenv("WEAVIATE_WCS_URL")
 
     # connect to a WCS instance & openai
-    # weaviate_client = weaviate.connect_to_wcs(
-    #     cluster_url = weaviate_endpoint,
-    #     auth_credentials = weaviate.auth.AuthApiKey(weaviate_api_key),
-    # )
-    weaviate_client = None
+    weaviate_client = weaviate.Client(url=str(weaviate_endpoint), auth_client_secret=weaviate.AuthApiKey(api_key=weaviate_api_key))
     openai_client = OpenAI(api_key = openai_api_key)
     
     history = History()
