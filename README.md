@@ -1,4 +1,5 @@
 # BrunoChat
+A chatbot designed to serve as a conversational knowledge interface for the Computer Science Department. 
 
 ## Data Preparation
 Refer to [BrunoChat Data Pipelines](https://github.com/MadaniKK/2270-crawler-test). 
@@ -6,17 +7,24 @@ Refer to [BrunoChat Data Pipelines](https://github.com/MadaniKK/2270-crawler-tes
 ## Installation
 ### 1. Activate Virtual Environment
 ```shell
-python3 -m venv brunochat-env
+python -m venv brunochat-env
 source brunochat-env/bin/activate
 ```
 
 ### 2. Install Dependencies
 To install packages
 ```shell
-pip3 install -r requirements.txt 
+pip install -r requirements.txt 
 ```
 
 To export packages
 ```shell
-pip3 freeze > requirements.txt
+pip freeze > requirements.txt
+```
+
+### 3. Prepare Credentials
+```shell
+echo OPENAI_API_KEY={openai_key}     >> .env
+echo WEAVIATE_API_KEY={weaviate_key} >> .env
+echo WEAVIATE_WCS_URL={server_url}   >> .env
 ```
