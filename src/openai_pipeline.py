@@ -1,32 +1,24 @@
 from dotenv import load_dotenv
 import os
 from history_storage import Message, History
-
-import weaviate
+from db_client import QdrantDatabaseClient
 from openai import OpenAI
 
 
-def context_retrieval(client, collection_name, question_embedding):
-    response = (
-        client.query.get(collection_name, ["text_content", "url"])
-                .with_near_vector({"vector": question_embedding, "certainty": 0.5})
-                .with_limit(1)
-                .with_additional(["distance"])
-                .do()
-    )
-    
-    retrieved_texts = [result['text_content'] for result in response['data']['Get'][collection_name]]
-    return retrieved_texts
+def context_retrieval(client, query):
+    response = client.query(query)
+    return client.parse(response, query)
 
-def rag(history, question, openai_client, weaviate_client, collection_name):
+def rag(history, question, openai_client, db_client, query):
     # generate question embedding
     question_embedding = openai_client.embeddings.create(
         input = [question.replace("\n", " ")],
         model = 'text-embedding-3-small'
     ).data[0].embedding
 
-    retrieved_texts = context_retrieval(weaviate_client, collection_name, question_embedding)
-    # retrieved_texts = ""
+    query['question_embedding'] = question_embedding
+
+    retrieved_texts, links = context_retrieval(db_client, query)
     combined_context = " ".join(retrieved_texts)
     content = f"Given the following information {combined_context}\n\nAnswer the question: {question}"
     
@@ -39,24 +31,33 @@ def rag(history, question, openai_client, weaviate_client, collection_name):
     history.add_message("user", content)
     history.add_message("assistant", response.choices[0].message.content)
     
-    return response.choices[0].message.content
+    return response.choices[0].message.content, ', '.join(links)
 
 if __name__ == "__main__":
     load_dotenv()
+    db_url = os.getenv("QDRANT_URL")
+    db_key = os.getenv("QDRANT_API_KEY")
     openai_api_key = os.getenv("OPENAI_API_KEY")
-    weaviate_api_key = os.getenv("WEAVIATE_API_KEY")
-    weaviate_endpoint = os.getenv("WEAVIATE_WCS_URL")
 
-    # connect to a WCS instance & openai
-    weaviate_client = weaviate.Client(url=str(weaviate_endpoint), auth_client_secret=weaviate.AuthApiKey(api_key=weaviate_api_key))
+    # connect to db & openai
+    db_client = QdrantDatabaseClient(db_url, db_key)
     openai_client = OpenAI(api_key = openai_api_key)
+
+    # prepare db query
+    query = {}
+    query['collection_name'] = 'CSWebsiteContent'
+    query['property'] = ["text_content", "url"]
+    query['certainty'] = 0.6
+    query['limit'] = 2
     
     history = History()
     history.add_message("system", "You are a helpful assistant to answer any question related to Brown University's Computer Science department.")
+    print("---------------------------------------")
 
     while True:
         question = input()
         if question.lower() == 'quit' or question.lower() == 'q':
             break
-        answer = rag(history, question, openai_client, weaviate_client, "CSWebsiteContent")
+        answer, links = rag(history, question, openai_client, db_client, query)
         print(answer)
+        print(f'* Reference link: {links}')
