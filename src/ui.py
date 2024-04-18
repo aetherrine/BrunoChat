@@ -49,9 +49,11 @@ for question in predefined_questions:
         if predefined_prompt is None:
             predefined_prompt = question
 
-for message in st.session_state.history.get_history():
+for message in st.session_state.history.get_history_full():
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+        if message["link"]:
+            st.markdown("> Reference Links:  \n" + "  \n".join(message["link"]))
 
 prompt = st.chat_input("Ask a question about Brown CS")
 if predefined_prompt is not None:
@@ -70,5 +72,5 @@ if prompt:
             stream=True,
         )
         full_response = st.write_stream(response)
-        st.session_state.history.add_message("assistant", full_response)
+        st.session_state.history.add_message("assistant", full_response, links)
         st.markdown("> Reference Links:  \n" + "  \n".join(links))

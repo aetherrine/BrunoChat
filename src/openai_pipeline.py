@@ -34,7 +34,7 @@ def rag(history, question, openai_client, db_client, query, stream=False):
     history.add_message("user", question)
 
     if not stream:
-        history.add_message("assistant", response.choices[0].message.content)
+        history.add_message("assistant", response.choices[0].message.content, links)
         return response.choices[0].message.content, links
     else:
         # defer recording assistant's history to upstream
