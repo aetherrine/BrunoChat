@@ -5,7 +5,6 @@ from db_client import QdrantDatabaseClient
 from dotenv import load_dotenv
 import os
 import streamlit as st
-from utils import enhance_query
 
 st.title("Brown CS Assistant")
 
@@ -27,25 +26,44 @@ if "db_client" not in st.session_state:
     )
 
 if "query" not in st.session_state:
-    query = {}
-    query["collection_name"] = "CSWebsiteContent"
-    query["property"] = ["text_content", "url"]
-    query["certainty"] = 0.6
-    query["limit"] = 3
+    query = {
+        "collection_name": "CSWebsiteContent",
+        "property": ["text_content", "url"],
+        "certainty": 0.6,
+        "limit": 3
+    }
     st.session_state.query = query
+
+
+st.subheader("Quick Questions:")
+predefined_questions = [
+    "What are the requirements for a CS degree at Brown?",
+    "Who are the CS faculty at Brown?",
+    "What research areas are covered in Brown's CS department?",
+    "How do I apply for a graduate program in CS at Brown?"
+]
+
+predefined_prompt = None
+for question in predefined_questions:
+    if st.button(question):
+        if predefined_prompt is None:
+            predefined_prompt = question
 
 for message in st.session_state.history.get_history():
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-if prompt := st.chat_input("Ask a question about Brown CS"):
+prompt = st.chat_input("Ask a question about Brown CS")
+if predefined_prompt is not None:
+    prompt = predefined_prompt
+if prompt:
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
         response, links = rag(
             st.session_state.history,
-            enhance_query(prompt),
+            prompt,
             st.session_state.openai_client,
             st.session_state.db_client,
             st.session_state.query,

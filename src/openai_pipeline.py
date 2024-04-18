@@ -3,6 +3,7 @@ import os
 from history_storage import History
 from db_client import QdrantDatabaseClient
 from openai import OpenAI
+from utils import enhance_query
 
 
 def context_retrieval(client, query):
@@ -11,8 +12,9 @@ def context_retrieval(client, query):
 
 def rag(history, question, openai_client, db_client, query, stream=False):
     # generate question embedding
+    enhanced_question = enhance_query(question)
     question_embedding = openai_client.embeddings.create(
-        input = [question.replace("\n", " ")],
+        input = [enhanced_question.replace("\n", " ")],
         model = 'text-embedding-3-small'
     ).data[0].embedding
 
@@ -20,7 +22,7 @@ def rag(history, question, openai_client, db_client, query, stream=False):
 
     retrieved_texts, links = context_retrieval(db_client, query)
     combined_context = " ".join(retrieved_texts)
-    content = f"Given the following information {combined_context}\n\nAnswer the question: {question}"
+    content = f"Given the following information {combined_context}\n\nAnswer the question: {enhanced_question}"
     
     # generate answer with context
     response = openai_client.chat.completions.create(
