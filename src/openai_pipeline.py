@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 import os
-from history_storage import Message, History
+from history_storage import History
 from db_client import QdrantDatabaseClient
 from openai import OpenAI
 
@@ -9,7 +9,7 @@ def context_retrieval(client, query):
     response = client.query(query)
     return client.parse(response, query)
 
-def rag(history, question, openai_client, db_client, query):
+def rag(history, question, openai_client, db_client, query, stream=False):
     # generate question embedding
     question_embedding = openai_client.embeddings.create(
         input = [question.replace("\n", " ")],
@@ -25,13 +25,18 @@ def rag(history, question, openai_client, db_client, query):
     # generate answer with context
     response = openai_client.chat.completions.create(
         model = "gpt-3.5-turbo",
-        messages= history.get_history() + [{"role": "user", "content": content}]
+        messages= history.get_history() + [{"role": "user", "content": content}],
+        stream = stream,
     )
 
-    history.add_message("user", content)
-    history.add_message("assistant", response.choices[0].message.content)
-    
-    return response.choices[0].message.content, ', '.join(links)
+    history.add_message("user", question)
+
+    if not stream:
+        history.add_message("assistant", response.choices[0].message.content)
+        return response.choices[0].message.content, links
+    else:
+        # defer recording assistant's history to upstream
+        return response, links
 
 if __name__ == "__main__":
     load_dotenv()
@@ -48,7 +53,7 @@ if __name__ == "__main__":
     query['collection_name'] = 'CSWebsiteContent'
     query['property'] = ["text_content", "url"]
     query['certainty'] = 0.6
-    query['limit'] = 2
+    query['limit'] = 3
     
     history = History()
     history.add_message("system", "You are a helpful assistant to answer any question related to Brown University's Computer Science department.")
@@ -60,4 +65,4 @@ if __name__ == "__main__":
             break
         answer, links = rag(history, question, openai_client, db_client, query)
         print(answer)
-        print(f'* Reference link: {links}')
+        print('* Reference link: ' + ', '.join(links))
