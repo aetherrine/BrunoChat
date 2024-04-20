@@ -55,7 +55,7 @@ if __name__ == "__main__":
     query['collection_name'] = 'CSWebsiteContent'
     query['property'] = ["text_content", "url"]
     query['certainty'] = 0.6
-    query['limit'] = 3
+    query['limit'] = 5
     
     history = History()
     history.add_message("system", "You are a helpful assistant to answer any question related to Brown University's Computer Science department.")
