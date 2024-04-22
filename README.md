@@ -24,7 +24,7 @@ pip freeze > requirements.txt
 
 ### 3. Prepare Credentials
 ```shell
-echo OPENAI_API_KEY={openai_key}     >> .env
-echo WEAVIATE_API_KEY={weaviate_key} >> .env
-echo WEAVIATE_WCS_URL={server_url}   >> .env
+echo OPENAI_API_KEY={openai_key}   >> .env
+echo QDRANT_API_KEY={qdrant_key}   >> .env
+echo QDRANT_URL={server_url}       >> .env
 ```
