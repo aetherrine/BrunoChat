@@ -49,7 +49,7 @@ class QdrantDatabaseClient(DatabaseClient):
     def parse(self, response, query):
         retrieved_texts = [result.payload['text_content'] for result in response]
         links = [result.payload['url'] for result in response]
-        timestamps = [result.payload['last_modified'] for result in response]
+        timestamps = [result.payload.get('last_modified') for result in response]
         
         zipped_lists = zip(timestamps, retrieved_texts, links)
         sorted_zipped_lists = sorted(zipped_lists, key=self.sort_key, reverse=True)
